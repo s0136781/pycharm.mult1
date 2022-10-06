@@ -2,11 +2,11 @@ import math
 import cv2
 
 def find_contours():
-    img = cv2.imread(r'C:\Users\Arseniy.Zhuk\Documents\example.jpg')
+    img = cv2.imread(r'C:\Users\vlad5\PycharmProjects\pythonProject5\example.jpg')
     #cv2.namedWindow('Display window', cv2.WINDOW_AUTOSIZE)
     #cv2.imshow('Display window', img)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    newGray = cv2.imread(r'C:\Users\Arseniy.Zhuk\Documents\example.jpg')
+    newGray = cv2.imread(r'C:\Users\vlad5\PycharmProjects\pythonProject5\example.jpg')
     newGray = cv2.cvtColor(newGray, cv2.COLOR_BGR2GRAY)
     gauss_gray = cv2.GaussianBlur(gray, (11,11), 0)
     new_gauss_gray = cv2.GaussianBlur(newGray, (11,11), 0)
