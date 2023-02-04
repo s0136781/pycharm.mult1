@@ -1,16 +1,86 @@
+import numpy as np
 import cv2
 
-video = cv2.VideoCapture("http://10.108.101.163:8080/video")
-ok, img = video.read()
-w = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
-h = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
-video_writer = cv2.VideoWriter("outputcamtel.mov", fourcc, 25, (w, h))
-while (True):
-    ok, img = video.read()
-    cv2.imshow('img', img)
-    video_writer.write(img)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-video.release()
+n = 5
+center = (n - 1) // 2
+sigma = 1.4
+
+
+def getMatrix():
+    _matrix = []
+    for i in range(n):
+        _vector = []
+        for j in range(n):
+            _vector.append(gauss(i, j))
+        _matrix.append(_vector)
+    return _matrix
+
+
+def gauss(x, y, a=center, b=center):
+    return 1 / (2 * np.pi * (sigma ** 2)) * \
+           np.exp(-((x - a) ** 2 + (y - b) ** 2) / (2 * sigma * sigma))
+
+
+matrix = getMatrix()
+
+def getSum():
+    _sum = 0
+    for i in range(n):
+        for j in range(n):
+            _sum += matrix[i][j]
+    return _sum
+
+
+sum = getSum()
+
+
+def getNormMatrix():
+    _matrix = []
+    for i in range(n):
+        _vector = []
+        for j in range(n):
+            _vector.append(matrix[i][j] / sum)
+        _matrix.append(_vector)
+    return _matrix
+
+
+matrix = getNormMatrix()
+
+
+
+sum = 0
+for i in range(n):
+    for j in range(n):
+        sum += matrix[i][j]
+
+
+def getPicture(path=r"C:\Users\vlad5\PycharmProjects\pythonProject\pixel.jpg"):
+    _img = cv2.imread(path, cv2.IMREAD_ANYDEPTH)
+    return _img
+
+
+def getBlurPicture(img=getPicture()):
+    imgNew = img
+
+    len1 = len(img)
+    len2 = len(img[0])
+
+    for i in range(center, len1 - center):
+        for j in range(center, len2 - center):
+            _sum = 0
+            for q in range(n):
+                for w in range(n):
+                    _sum += matrix[q][w] * img[q + i - center][w + j - center]
+            imgNew[i][j] = _sum
+
+    return imgNew
+
+
+out1 = getBlurPicture()
+out2 = cv2.GaussianBlur(getPicture(), (5, 5), 1.4)
+cv2.imshow("original", getPicture())
+cv2.imshow("blur", out1)
+cv2.imshow("inline blur", out2)
+
+cv2.waitKey(0)
 cv2.destroyAllWindows()
