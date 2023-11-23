@@ -1,180 +1,151 @@
-import cv2
+from copy import deepcopy
+
 import numpy as np
-import copy
+import cv2
 
 
-# реализация операции свёртки
-def convolution(img, kernel):
-    kernel_size = len(kernel)
-    # начальные координаты для итераций по пикселям
-    x_start = kernel_size // 2
-    y_start = kernel_size // 2
-    # переопределение матрицы изображения для работы с каждым внутренним пикселем
-    matr = np.zeros(img.shape)
-    for i in range(img.shape[0]):
-        for j in range(img.shape[1]):
-            matr[i][j] = img[i][j]
+# ЛР3 - границы объектов
+# если в пикселе сильно (быстро) меняется цвет (функция) -> производная, значит это граница
+# градиент: (di/dx; di/dy)
+# большой градиент - граница
+# алгоритм Канни
+# 1. ч.б.
+# 2. Gauss Blur
+# 3. Градиенты
+# 4. (тоже 3 пункт) Численные методы (матан для натуральных чисел, производная двух переменных)
+# Метод Собеля
+# две матрицы свёртки к каждому пикселю 2 раза
+# находим длину вектора для каждого пикселя и сравниваем с другими
+# считаем tg=Gy/Gx = 45 град
+# 4. Подавление немаксимумов
+# если величина градиента больше чем у соседей, то это граница
+# все что граница - черным, не граница - белым
+# 5. Двойная пороговая фильтрация (применяем только к границам)
+# если градиент больше high - точно граница, меньше чем low - Точно не граница
+# если попали по-середине, смотрим, есть ли вокруг него граница
+# если да, то текущий граница, иначе нет
+# 6. контуры надо замкнуть, разбирать не будем
 
-    for i in range(x_start, len(matr) - x_start):
-        for j in range(y_start, len(matr[i]) - y_start):
-            # операция свёртки - каждый пиксель умножается на соответствующий элемент ядра свертки, а затем все произведения суммируются
-            val = 0
-            for k in range(-(kernel_size // 2), kernel_size // 2 + 1):
-                for l in range(-(kernel_size // 2), kernel_size // 2 + 1):
-                    val += img[i + k][j + l] * kernel[k + (kernel_size // 2)][l + (kernel_size // 2)]
-            matr[i][j] = val
-    return matr
-
-
-# нахождение округления угла между вектором градиента и осью Х
-def get_angle_number(x, y):
-    tg = y / x if x != 0 else 999
-    if (x < 0):
-        if (y < 0):
-            if (tg > 2.414):
-                return 0
-            elif (tg < 0.414):
-                return 6
-            elif (tg <= 2.414):
-                return 7
-        else:
-            if (tg < -2.414):
-                return 4
-            elif (tg < -0.414):
-                return 5
-            elif (tg >= -0.414):
-                return 6
-    else:
-        if (y < 0):
-            if (tg < -2.414):
-                return 0
-            elif (tg < -0.414):
-                return 1
-            elif (tg >= -0.414):
-                return 2
-        else:
-            if (tg < 0.414):
-                return 2
-            elif (tg < 2.414):
-                return 3
-            elif (tg >= 2.414):
-                return 4
+def getPicture(path=r'C:\Users\vlad5\PycharmProjects\pythonProject4\grusha.jpg'):
+    return cv2.imread(path, cv2.IMREAD_ANYDEPTH)
 
 
-# Получение значений для смещения по осям
-# на вход номер блока угла
-def get_offset(angle):
-    x_shift = 0
-    y_shift = 0
-    # смещение по оси абсцисс
-    if (angle == 0 or angle == 4):
-        x_shift = 0
-    elif (angle > 0 and angle < 4):
-        x_shift = 1
-    else:
-        x_shift = -1
-    # смещение по оси ординат
-    if (angle == 2 or angle == 6):
-        y_shift = 0
-    elif (angle > 2 and angle < 6):
-        y_shift = -1
-    else:
-        y_shift = 1
-    return x_shift, y_shift
+img = cv2.GaussianBlur(getPicture(), (3, 3), 1.4)
+n, m = img.shape[:2]
+n = int(n)
+m = int(m)
+print(n, m)
 
 
-def main(path, standard_deviation, kernel_size, lower_bound, upper_bound, operator):
-    # Задание 1 - чтение строки полного адреса изображения и размытие Гаусса
-    img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-    imgBlur_CV2 = cv2.GaussianBlur(img, (kernel_size, kernel_size), standard_deviation)
-    # cv2.imshow('Blur_Imagine', imgBlur_CV2)
-    cv2.imshow('Original_image', img)
+def some_xy():
+    gx = np.array([
+        [-1, 0, 1],
+        [-2, 0, 2],
+        [-1, 0, 1],
+    ])
 
-    # Задание 2 - вычисление и вывод матрицы значений длин и матрицы значений углов градиентов
-    if operator == 'sobel':
-        # задание матриц оператора Собеля
-        Gx = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]]
-        Gy = [[-1, -2, -1], [0, 0, 0], [1, 2, 1]]
+    gy = np.array([
+        [-1, -2, -1],
+        [0, 0, 0],
+        [1, 2, 1],
+    ])
 
-    if operator == 'previtta':
-        # оператор Превитта
-        Gx = [[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]]
-        Gy = [[-1, -1, -1], [0, 0, 0], [1, 1, 1]]
+    imgNew1 = np.zeros((n, m))
+    imgNew2 = np.zeros((n, m))
 
-    # применение операции свёртки
-    img_Gx = convolution(img, Gx)
-    img_Gy = convolution(img, Gy)
+    for i in range(1, n - 1):
+        for j in range(1, m - 1):
+            subImg = img[i - 1:i + 2, j - 1:j + 2]
+            imgNew1[i][j] = np.sum(np.multiply(subImg, gx))
+            imgNew2[i][j] = np.sum(np.multiply(subImg, gy))
 
-    # нахождение матрицы длины вектора градиентаfind
-    matr_gradient = np.sqrt(img_Gx ** 2 + img_Gy ** 2)
-    # # нормализация - получаем все значения к виду от 0 до 1
-    max_gradient = np.max(matr_gradient)
-    matr_gradient = matr_gradient / max_gradient
+    return imgNew1, imgNew2
 
-    # нахождение матрицы значений углов градиента
-    img_angles = img.copy()
-    for i in range(img.shape[0]):
-        for j in range(img.shape[1]):
-            img_angles[i][j] = get_angle_number(img_Gx[i][j], img_Gy[i][j])
 
-    # print('Матрица значений длин градиента:')
-    # print(matr_gradient)
-    #
-    # # вывод
-    # print('Матрица значений углов градиента:')
-    # print(img_angles)
+def gradient():
+    gx, gy = some_xy()
 
-    # Задание 3 - подавление немаксимумов
+    matrix_length = np.zeros((n, m))  # значения градиентов
+    matrix_atan = np.zeros((n, m))  # тангенсы (направления от 0 до 7)
 
-    # инициализация массива границ изображения
-    img_border = img.copy()
-    for i in range(img.shape[0]):
-        for j in range(img.shape[1]):
-            # проверка находится ли пиксель на границе изображения
-            if (i == 0 or i == img.shape[0] - 1 or j == 0 or j == img.shape[1] - 1):
-                img_border[i][j] = 0  # граничный пиксель в значении 0
+    for i in range(1, n - 1):
+        for j in range(1, m - 1):
+            x = int(gx[i][j])
+            y = int(gy[i][j])
+            matrix_length[i][j] = (x ** 2 + y ** 2) ** 0.5
+
+            tg = -1
+            if x != 0:
+                tg = y / x
+
+            value = -1
+
+            if x > 0 and y < 0 and tg < -2.414 or \
+                    x < 0 and y < 0 and tg > 2.414:
+                value = 0
+            elif x > 0 and y < 0 and tg < -0.414:
+                value = 1
+            elif x > 0 and y < 0 and tg > -0.414 or \
+                    x > 0 and y > 0 and tg < 0.414:
+                value = 2
+            elif x > 0 and y > 0 and tg < 2.414:
+                value = 3
+            elif x > 0 and y > 0 and tg > 2.414 or \
+                    x < 0 and y > 0 and tg < -2.414:
+                value = 4
+            elif x < 0 and y > 0 and tg < -0.414:
+                value = 5
+            elif x < 0 and y > 0 and tg > -0.414 or \
+                    x < 0 and y < 0 and tg < 0.414:
+                value = 6
+            elif x < 0 and y < 0 and tg < 2.414:
+                value = 7
+
+            matrix_atan[i][j] = value
+
+    max_matrix_length = np.max(matrix_length)
+    low_level = max_matrix_length // 25
+    high_level = max_matrix_length // 10
+    low_level = 20
+    high_level = 60
+
+    matrix_border = deepcopy(img)  # границы
+    for i in range(1, n - 1):
+        for j in range(1, m - 1):
+            way_plus = [[-1, -1], [-1, -1]]
+            some = matrix_atan[i][j]
+            # [y, x] logic
+            if some == 0 or some == 4:
+                way_plus = [[-1, 0], [1, 0]]
+            elif some == 2 or some == 6:
+                way_plus = [[0, -1], [0, 1]]
+            elif some == 1 or some == 5:
+                way_plus = [[-1, 1], [1, -1]]
+            elif some == 3 or some == 7:
+                way_plus = [[1, 1], [-1, -1]]
+
+            grad = matrix_length[i][j]
+
+            if grad >= matrix_length[i + way_plus[0][0]][j + way_plus[0][1]] \
+                    and grad >= matrix_length[i + way_plus[1][0]][j + way_plus[1][1]]:
+                matrix_border[i][j] = 0
             else:
-                # Получение смещения по осям, для рассмотрения соседей по направлению наиб роста функции
-                x_shift, y_shift = get_offset(img_angles[i][j])
-                # длина вектора градиента
-                gradient = matr_gradient[i][j]
-                # проверка имеет ли пиксель максимальное значение градиента среди соседних пикселей относительно смещения
-                is_max = gradient >= matr_gradient[i + y_shift][j + x_shift] and gradient >= matr_gradient[i - y_shift][
-                    j - x_shift]
-                img_border[i][j] = 255 if is_max else 0
-    cv2.imshow('img_border', img_border)
-    cv2.imwrite('border.jpg', img_border)
+                matrix_border[i][j] = 255
 
-    # Задание 4 - двойная пороговая фильтрация
+            if matrix_border[i][j] == 0:
+                matrix_border[i][j] = 255
+                subImg = matrix_border[i - 1:i + 2, j - 1:j + 2]
+                min_el = np.min(subImg)
 
-    # инициализация массива результата
-    double_filtration = np.zeros(img.shape)
+                if grad < low_level:
+                    matrix_border[i][j] = 255
+                elif grad > high_level:
+                    matrix_border[i][j] = 0
+                elif min_el == 0:
+                    matrix_border[i][j] = 0
 
-    for i in range(img.shape[0]):
-        for j in range(img.shape[1]):
-            # длина вектора градиента
-            gradient = matr_gradient[i][j]
-            # проверка является ли пиксель границей
-            if (img_border[i][j] == 255):
-                # проверка градиента в диапазоне
-                if (gradient >= lower_bound and gradient <= upper_bound):
-                    # проверка пикселя с максимальной длиной градиента среди соседей
-                    for k in range(-1, 2):
-                        for l in range(-1, 2):
-                            # поиск границы( если соседний пиксель граница и входит в диапазон)
-                            if (img_border[i + k][j + l] == 255 and matr_gradient[i + k][j + l] >= lower_bound):
-                                double_filtration[i][j] = 255
-                                break
-
-                # если значение градиента выше - верхней границы, то пиксель точно граница
-                elif (gradient > upper_bound):
-                    double_filtration[i][j] = 255
-    cv2.imshow('deviation=' + str(standard_deviation) + ' kernel='
-               + str(kernel_size) + ' bound low =' + str(lower_bound) + ' bound upper =' + str(
-        upper_bound) + ' operator - ' + str(operator), double_filtration)
+    cv2.imshow("nameee", matrix_border)
+    cv2.waitKey(0)
 
 
-main('../images/test_512.jpg', 10, 3, 0.2, 0.4, 'sobel')
-main('../images/test_512.jpg', 100, 3, 0.15, 0.85, 'sobel')
-# main('../images/test_512.jpg', 20, 3, 7, 'previtta')
-cv2.waitKey(0)
+gradient()
