@@ -21,14 +21,15 @@ cv2.destroyAllWindows()
 
 #2
 
-cap = cv2.VideoCapture(0)
+video = cv2.VideoCapture("http://192.168.142.221:8080/video")
+
 
 # определение диапазона красного цвета в HSV
-lower_red = np.array([0, 0, 100])  # минимальные значения оттенка, насыщенности и яркости
-upper_red = np.array([100, 100, 255])  # максимальные значения оттенка, насыщенности и яркости
+lower_red = np.array([50, 150, 50])  # минимальные значения оттенка, насыщенности и яркости
+upper_red = np.array([250, 250, 250]) # максимальные значения оттенка, насыщенности и яркости
 
 while True:
-    ret, frame = cap.read()
+    ret, frame = video.read()
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     if not ret:
@@ -39,15 +40,20 @@ while True:
     if cv2.waitKey(1) & 0xFF == 27:
         break
 
+        video.release()
+        cv2.destroyAllWindows()
 
-#3
 
-'''
+
 kernel = np.ones((5, 5), np.uint8)
 opening = cv2.morphologyEx(hsv, cv2.MORPH_OPEN, kernel)
 closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel)
 
-'''
+
+cv2.imshow('Opening', opening)
+cv2.imshow('Closing', closing)
+cv2.waitKey(0)
+
 
 #4-5
 '''
@@ -89,3 +95,4 @@ while True:
 cap.release()
 cv2.destroyAllWindows()
 '''
+
