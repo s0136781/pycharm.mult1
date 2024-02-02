@@ -20,8 +20,8 @@ cv2.destroyAllWindows()
 '''
 
 #2
-
-video = cv2.VideoCapture("http://192.168.142.221:8080/video")
+'''
+video = cv2.VideoCapture("http://212.192.144.20:8080/video")
 
 
 # определение диапазона красного цвета в HSV
@@ -53,10 +53,10 @@ closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel)
 cv2.imshow('Opening', opening)
 cv2.imshow('Closing', closing)
 cv2.waitKey(0)
-
+'''
 
 #4-5
-'''
+
 cap = cv2.VideoCapture(0)
 
 # определение диапазона красного цвета в HSV
@@ -86,7 +86,30 @@ while True:
         posX = int(m10 // area)
         posY = int(m01 // area)
         width = height = int(np.sqrt(area))
-        cv2.rectangle(frame, (posX - (width // 20), posY - (height // 20)), (posX + (width // 20), posY + (height // 20)), color, thickness)
+        # Создаем черную звезду
+        star_points = []
+        star_radius_outer = width // 20  # радиус внешней окружности
+        star_radius_inner = width // 40  # радиус внутренней окружности
+        star_angle = np.pi / 2  # начальный угол
+
+        for i in range(10):
+            if i % 2 == 0:
+                x = posX + int(star_radius_outer * np.cos(star_angle))
+                y = posY - int(star_radius_outer * np.sin(star_angle))
+            else:
+                x = posX + int(star_radius_inner * np.cos(star_angle))
+                y = posY - int(star_radius_inner * np.sin(star_angle))
+            star_points.append((x, y))
+            star_angle += (2 * np.pi) / 10
+
+        star_points = np.array(star_points, np.int32)
+        star_points = star_points.reshape((-1, 1, 2))
+
+        # Отображаем черную звезду на кадре
+        cv2.fillPoly(frame, [star_points], (0, 0, 0))  # Черный цвет
+
+        # Отображаем черную звезду на кадре
+        cv2.fillPoly(frame, [star_points], (0, 0, 0))  # Черный цвет
     cv2.imshow('HSV_frame', mask)
     cv2.imshow('Result_frame', frame)
     if cv2.waitKey(1) & 0xFF == 27:
@@ -94,5 +117,5 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
-'''
+
 
